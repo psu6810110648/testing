@@ -1,4 +1,3 @@
-# ไฟล์: game_screen.py
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 

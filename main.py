@@ -1,5 +1,7 @@
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
+from screens.game_screen import GameScreen
+from screens.start_screen import StartScreen
 
 # ดึงหน้าจอ StartScreen ที่บิวสร้างไว้มาใช้งาน
 from screens.start_screen import StartScreen
@@ -14,7 +16,7 @@ class KingOfFruitApp(App):
         sm.add_widget(StartScreen(name='start'))
         
         # ถ้าเพื่อนทำหน้าเกมเสร็จ ก็จะเอามาต่อตรงนี้
-        # sm.add_widget(GameScreen(name='game'))
+        sm.add_widget(GameScreen(name='game'))
         
         # สั่งให้แอปเปิดมาเจอหน้า 'start' เป็นหน้าแรกเสมอ
         sm.current = 'start'

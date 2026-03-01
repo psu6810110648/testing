@@ -9,7 +9,7 @@ class GameScreen(Screen):
         super(GameScreen, self).__init__(**kwargs)
         
         # รายการผลไม้ที่ใช้ในเกม
-        self.fruit_types = ['ทุเรียน', 'มังคุด', 'เงาะ', 'ลิ้นจี่', 'ลำไย', 'มะม่วง']
+        self.fruit_types = ['ทุเรียน', 'มังคุด', 'กล้วย', 'สตรอว์เบอร์รี่', 'แอปเปิล', 'ส้ม', 'องุ่น']
         
         # กองเก็บไพ่ (สูงสุด 7 ใบ)
         self.MAX_SLOTS = 7

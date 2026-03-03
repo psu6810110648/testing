@@ -5,6 +5,7 @@ from kivy.uix.button import Button
 from kivy.uix.image import Image
 import random
 from kivy.core.audio import SoundLoader
+from kivy.clock import Clock 
 
 # โหลดไฟล์หน้าตา UI
 Builder.load_file('ui.kv')
@@ -13,10 +14,11 @@ class GameScreen(Screen):
     # Properties สำหรับ bind กับ UI
     slot_display = StringProperty("ช่องว่าง: 7/7")
     slot_fruits = ListProperty([])
+    time_display = StringProperty("เวลา: 60")
     
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
-         
+
         self.fruit_types = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
         
         # กองเก็บไพ่ (สูงสุด 7 ใบ)
@@ -28,13 +30,49 @@ class GameScreen(Screen):
         
         # คะแนน
         self.score = 0
-        self.game_over_flag = False  
+        self.game_over_flag = False
+        self.time_left = 60
+    
+    def update_time(self, dt):
+        """ฟังก์ชันนับถอยหลัง (เรียกโดย Clock ทุก 1 วินาที)"""
+        # ถ้าเกมจบแล้ว ไม่ต้องนับต่อ
+        if self.game_over_flag:
+            return
+
+        # ลดเวลาลง 1 วินาที
+        self.time_left -= 1
+        
+        # อัปเดตตัวเลขบนหน้าจอ (ส่งค่าไปที่ ui.kv)
+        self.time_display = f"เวลา: {self.time_left}"
+
+        # 🔍 จุดสำคัญ: เช็คว่าเวลาหมดหรือยัง?
+        if self.time_left <= 0:
+            self.time_left = 0
+            self.time_display = "หมดเวลา!"
+            print("⏳ หมดเวลาแล้ว! Game Over!")
+            
+            # 💀 สั่งให้แพ้ทันที! (บรรทัดนี้ต้องมี!)
+            self.game_over(is_win=False)
     
     def on_enter(self):
-        """เรียกทุกครั้งที่เข้าหน้านี้ - เริ่มเกมใหม่"""
+        """เริ่มเกมใหม่"""
         self.score = 0
         self.game_over_flag = False
+        
+        # ตั้งเวลาเริ่มต้น 60 วินาที
+        self.time_left = 60
+        self.time_display = f"เวลา: {self.time_left}"
+        
         self.generate_tiles()
+        
+        # ⏱️ เริ่มจับเวลา (เรียก update_time ทุก 1 วินาที)
+        # อย่าลืม import Clock ด้านบนสุดนะครับ
+        self.timer_event = Clock.schedule_interval(self.update_time, 1)
+    
+    def on_leave(self):
+        """หยุดจับเวลาเมื่อออกจากหน้านี้"""
+        if hasattr(self, 'timer_event'):
+            self.timer_event.cancel()
     
     def generate_tiles(self):
         """สุ่มและสร้างไพ่บนกระดาน"""
@@ -190,4 +228,6 @@ class GameScreen(Screen):
         if sound:
             sound.volume = 1.0
             sound.play()
+            
+    
             

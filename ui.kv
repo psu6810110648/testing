@@ -15,6 +15,13 @@
                     pos: self.pos
                     size: self.size
 
+            Label:
+                text: root.time_display  # ผูกกับตัวแปร time_display ใน Python
+                font_size: '30sp'
+                color: 1, 0, 0, 1  # สีแดง
+                pos_hint: {'center_x': 0.85, 'top': 0.95} # มุมขวาบน
+                bold: True
+
         # ส่วนล่าง: ช่องเก็บไพ่ 7 ช่อง (ที่กดลงมาแล้วรอจับคู่ 3 ใบ)
         BoxLayout:
             size_hint_y: 0.3

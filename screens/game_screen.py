@@ -4,6 +4,7 @@ from kivy.properties import StringProperty, ListProperty
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 import random
+from kivy.core.audio import SoundLoader
 
 # โหลดไฟล์หน้าตา UI
 Builder.load_file('ui.kv')
@@ -113,6 +114,8 @@ class GameScreen(Screen):
         """ฟังก์ชันทำงานเมื่อคลิกไพ่ (ใช้กับระบบใหม่)"""
         if self.game_over_flag:
             return
+        
+        self.play_sound('click.wav')
             
         print(f"คลิกไพ่: {fruit_type}")
         
@@ -149,6 +152,7 @@ class GameScreen(Screen):
                 
                 # เพิ่มคะแนน
                 self.score += 100
+                self.play_sound('match.wav')
                 
                 # อัพเดท UI
                 self.update_slot_display()
@@ -180,3 +184,10 @@ class GameScreen(Screen):
     def back_to_menu(self):
         # ฟังก์ชันปุ่มกลับหน้าเมนู
         print("กลับเมนูหลัก")
+        
+    def play_sound(self, sound_file):
+        sound = SoundLoader.load(f'assets/sounds/{sound_file}')
+        if sound:
+            sound.volume = 1.0
+            sound.play()
+            

@@ -1,27 +1,35 @@
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
-from screens.game_screen import GameScreen
+from kivy.core.audio import SoundLoader # 👈 1. เพิ่มบรรทัดนี้ด้านบนสุด
 from screens.start_screen import StartScreen
 from screens.result_screen import ResultScreen
+from screens.game_screen import GameScreen
 
 class KingOfFruitApp(App):
     def build(self):
-        # สร้างตัวจัดการหน้าจอ
         sm = ScreenManager()
-        
-        # เอาหน้าจอของบิวใส่เข้าไปในระบบ แล้วตั้งชื่อให้มันว่า 'start'
         sm.add_widget(StartScreen(name='start'))
-        
-        # ถ้าเพื่อนทำหน้าเกมเสร็จ ก็จะเอามาต่อตรงนี้
         sm.add_widget(GameScreen(name='game'))
-        
-        # เพิ่มหน้าสรุปผล (Result Screen)
         sm.add_widget(ResultScreen(name='result'))
-        
-        # สั่งให้แอปเปิดมาเจอหน้า 'start' เป็นหน้าแรกเสมอ
         sm.current = 'start'
         
+        # --- 🎵 ส่วนเล่นเพลงประกอบ (BGM) ---
+        # (เช็ค path ให้ตรงกับที่ย้ายโฟลเดอร์นะ)
+        self.bgm = SoundLoader.load('assets/sounds/bgm.mp3')
+        if self.bgm:
+            self.bgm.loop = True  # สั่งให้วนซ้ำ
+            self.bgm.volume = 0.5 # ปรับความดัง (0.0 ถึง 1.0)
+            self.bgm.play()       # เริ่มเล่นเลย
+            print(">> BGM Started!")
+        else:
+            print("!! Warning: หาไฟล์ bgm.mp3 ไม่เจอ")
+            
         return sm
+
+    # เพิ่มฟังก์ชันปิดเพลงตอนปิดแอป (กันเพลงค้าง)
+    def on_stop(self):
+        if hasattr(self, 'bgm') and self.bgm:
+            self.bgm.stop()
 
 if __name__ == '__main__':
     KingOfFruitApp().run()

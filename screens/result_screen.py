@@ -5,6 +5,7 @@ from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
 from kivy.app import App
 from kivy.graphics import Color, RoundedRectangle
+from kivy.core.audio import SoundLoader
 
 # --- คลาสปุ่มขอบมน (ปรับสีเริ่มต้นให้สดใสขึ้น) ---
 class RoundedButton(Button):
@@ -90,16 +91,21 @@ class ResultScreen(Screen):
     def update_result(self, is_win, score):
         if is_win:
             # 🏆 ชนะ: ใช้รูปปาร์ตี้, ตัวหนังสือสีทองขอบเขียว
+            sound = SoundLoader.load('assets/sounds/win.wav')
             self.bg_image.source = 'assets/images/bg3.png' 
             self.result_label.text = "[b]YOU WIN![/b]"
             self.result_label.color = (1, 0.9, 0.1, 1)
             self.result_label.outline_color = (0, 0.5, 0, 1)
         else:
             # 💀 แพ้: ใช้รูปเดิม, ตัวหนังสือสีแดงขอบดำ
+            sound = SoundLoader.load('assets/sounds/lose.wav')
             self.bg_image.source = 'assets/images/bg4.png'
             self.result_label.text = "[b]GAME OVER[/b]"
             self.result_label.color = (0.9, 0.1, 0.1, 1)
             self.result_label.outline_color = (0, 0, 0, 1)
+            
+        if sound:
+            sound.play()
             
         self.score_label.text = f"Score: {score:,}"
         self.result_shadow.text = self.result_label.text

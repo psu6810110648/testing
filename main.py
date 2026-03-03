@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
-from kivy.core.audio import SoundLoader # 👈 1. เพิ่มบรรทัดนี้ด้านบนสุด
+from kivy.core.audio import SoundLoader 
 from screens.start_screen import StartScreen
 from screens.result_screen import ResultScreen
 from screens.game_screen import GameScreen

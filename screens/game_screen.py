@@ -4,6 +4,7 @@ from kivy.uix.button import Button
 from kivy.uix.widget import Widget
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.graphics import Color, RoundedRectangle, Rectangle, Line
@@ -66,7 +67,7 @@ class TileButton(Button):
         self.fruit_rect.pos = (self.x+pad, self.y+pad)
         self.fruit_rect.size = (self.width-pad*2, self.height-pad*2)
 
-# --- 3. คลาสช่องว่าง (EmptySlot) ---
+# --- 3. คลาสช่องว่าง (เหมือนเดิม) ---
 class EmptySlot(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -82,7 +83,7 @@ class EmptySlot(Widget):
         self.rect.size = self.size
         self.line.rounded_rectangle=(self.x, self.y, self.width, self.height, 10)
 
-# --- 4. คลาสช่องที่มีผลไม้ (FilledSlot) ---
+# --- 4. คลาสช่องที่มีผลไม้ (เหมือนเดิม) ---
 class FilledSlot(Widget):
     def __init__(self, fruit_source, **kwargs):
         super().__init__(**kwargs)
@@ -111,12 +112,13 @@ class GameScreen(Screen):
         self.tiles = []
         self.score = 0
         self.game_over_flag = False
+        self.is_paused = False # 👈 ตัวแปรเช็คสถานะหยุดเกม
         self.time_left = self.GAME_TIME
         
         self.layout = FloatLayout()
         
         # Background
-        self.bg = Image(source='assets/images/bg.png', allow_stretch=True, keep_ratio=False)
+        self.bg = Image(source='assets/images/bging.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg)
         
         # Game Board
@@ -143,22 +145,92 @@ class GameScreen(Screen):
         )
         self.layout.add_widget(self.lbl_time)
 
-        # ❌ ลบ self.lbl_slots (Slots: 0/7) ออกไปแล้วครับ
-        # (ไม่ต้องมีบรรทัด self.layout.add_widget(self.lbl_slots) แล้ว)
+        # 👇 1. ปุ่ม PAUSE (มุมซ้ายบน)
+        self.btn_pause = Button(
+            text="II", font_size='24sp', bold=True,
+            background_color=(1, 0.6, 0, 1), # สีส้ม
+            size_hint=(None, None), size=(60, 60),
+            pos_hint={'x': 0.02, 'top': 0.98}
+        )
+        self.btn_pause.bind(on_press=self.toggle_pause)
+        self.layout.add_widget(self.btn_pause)
+
+        # 👇 2. สร้างหน้าต่างเมนู Pause (ซ่อนไว้ก่อน)
+        self.create_pause_overlay()
 
         self.add_widget(self.layout)
+
+    def create_pause_overlay(self):
+        """สร้างหน้าต่างเมนูหยุดเกม"""
+        self.pause_menu = FloatLayout()
+        
+        # พื้นหลังสีดำจางๆ
+        with self.pause_menu.canvas.before:
+            Color(0, 0, 0, 0.7)
+            Rectangle(pos=(0,0), size=(2000, 2000)) # คลุมทั้งจอ
+
+        # กล่องเมนูตรงกลาง
+        menu_box = BoxLayout(orientation='vertical', spacing=20, size_hint=(None, None), size=(300, 250),
+                             pos_hint={'center_x': 0.5, 'center_y': 0.5})
+        
+        # ข้อความ PAUSED
+        lbl_paused = Label(text="PAUSED", font_size='40sp', bold=True, color=(1, 1, 1, 1))
+        menu_box.add_widget(lbl_paused)
+
+        # ปุ่ม RESUME
+        btn_resume = Button(text="RESUME", font_size='20sp', background_color=(0.2, 0.8, 0.2, 1))
+        btn_resume.bind(on_press=self.toggle_pause) # กดแล้วกลับไปเล่นต่อ
+        menu_box.add_widget(btn_resume)
+
+        # ปุ่ม EXIT
+        btn_exit = Button(text="EXIT TO MENU", font_size='20sp', background_color=(0.8, 0.2, 0.2, 1))
+        btn_exit.bind(on_press=self.go_to_menu) # กดแล้วกลับหน้าหลัก
+        menu_box.add_widget(btn_exit)
+
+        self.pause_menu.add_widget(menu_box)
+
+    def toggle_pause(self, instance):
+        """ฟังก์ชันสลับสถานะ หยุด/เล่นต่อ"""
+        if self.game_over_flag: return
+
+        self.is_paused = not self.is_paused # สลับค่า True/False
+
+        if self.is_paused:
+            # ถ้าหยุด: แสดงเมนู, หยุดเสียง (ถ้าอยาก)
+            self.layout.add_widget(self.pause_menu)
+            print("Game Paused")
+        else:
+            # ถ้าเล่นต่อ: เอาเมนูออก
+            self.layout.remove_widget(self.pause_menu)
+            print("Game Resumed")
+
+    def go_to_menu(self, instance):
+        """ออกจากเกมไปหน้าเมนูหลัก"""
+        self.layout.remove_widget(self.pause_menu) # เอาเมนูออกก่อน
+        self.is_paused = False # รีเซ็ตสถานะ
+        self.manager.current = 'start'
 
     def on_enter(self):
         self.score = 0
         self.game_over_flag = False
+        self.is_paused = False # รีเซ็ตสถานะหยุดเกม
         self.time_left = self.GAME_TIME
         self.lbl_time.text = f"Time\n{self.time_left}"
         self.time_bar.update_bar(self.time_left)
+        
+        # เอาเมนู pause ออก (เผื่อค้าง)
+        if self.pause_menu.parent:
+            self.layout.remove_widget(self.pause_menu)
+
         self.generate_tiles()
         self.timer_event = Clock.schedule_interval(self.update_time, 1)
 
     def update_time(self, dt):
         if self.game_over_flag: return
+        
+        # 👇 ถ้าเกมหยุดอยู่ ไม่ต้องลดเวลา
+        if self.is_paused: return 
+
         self.time_left -= 1
         self.lbl_time.text = f"Time\n{self.time_left}"
         self.time_bar.update_bar(self.time_left)
@@ -187,6 +259,10 @@ class GameScreen(Screen):
 
     def on_tile_click_new(self, btn_instance, fruit_type):
         if self.game_over_flag: return
+        
+        # 👇 ถ้าเกมหยุดอยู่ ห้ามกดผลไม้!
+        if self.is_paused: return 
+
         self.play_sound('click.wav')
         if len(self.slots) >= self.MAX_SLOTS: return
 
@@ -200,14 +276,11 @@ class GameScreen(Screen):
         self.check_win()
 
     def update_visual_slots(self):
-        # ❌ ลบการอัปเดต text ของ lbl_slots ออกไปแล้ว
         self.slot_grid.clear_widgets()
-        
         for fruit in self.slots:
             slot = FilledSlot(fruit_source=f'assets/images/picgame/{fruit}.png',
                               size_hint=(None, None), size=(80, 80))
             self.slot_grid.add_widget(slot)
-            
         remaining = self.MAX_SLOTS - len(self.slots)
         for _ in range(remaining):
             slot = EmptySlot(size_hint=(None, None), size=(80, 80))

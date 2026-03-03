@@ -2,232 +2,184 @@ from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 from kivy.properties import StringProperty, ListProperty
 from kivy.uix.button import Button
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
+from kivy.graphics import Color, RoundedRectangle, Rectangle
 import random
 from kivy.core.audio import SoundLoader
-from kivy.clock import Clock 
+from kivy.clock import Clock
 
-# โหลดไฟล์หน้าตา UI
-Builder.load_file('ui.kv')
+# --- 1. สร้างคลาสปุ่ม "ไพ่ผลไม้" (TileButton) ---
+# อันนี้แหละที่จะทำให้มีกรอบขาวๆ สวยๆ
+class TileButton(Button):
+    def __init__(self, fruit_source, **kwargs):
+        super().__init__(**kwargs)
+        self.background_normal = ''  # ลบพื้นหลังสีเทาเดิมของปุ่ม
+        self.background_color = (0, 0, 0, 0) # ทำให้ปุ่มใส
+        self.fruit_source = fruit_source
+        
+        # วาดกราฟิกเอง
+        with self.canvas.before:
+            # A. เงา (สีดำจางๆ)
+            Color(0, 0, 0, 0.2)
+            self.shadow = RoundedRectangle(pos=(self.x+3, self.y-3), size=self.size, radius=[15])
+            
+            # B. กรอบการ์ดสีขาว (หรือสีครีม)
+            Color(0.95, 0.95, 0.9, 1) 
+            self.card_bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[15])
+            
+        with self.canvas.after:
+            # C. รูปผลไม้ (วาดทับลงไป)
+            Color(1, 1, 1, 1)
+            pad = 10 # ระยะห่างจากขอบ
+            self.fruit_rect = Rectangle(source=self.fruit_source, 
+                                      pos=(self.x+pad, self.y+pad), 
+                                      size=(self.width-pad*2, self.height-pad*2))
 
+        # สั่งให้มันขยับตามถ้าหน้าจอเปลี่ยนขนาด
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+
+    def update_graphics(self, *args):
+        # อัปเดตตำแหน่งเงา
+        self.shadow.pos = (self.x+3, self.y-3)
+        self.shadow.size = self.size
+        # อัปเดตตำแหน่งการ์ด
+        self.card_bg.pos = self.pos
+        self.card_bg.size = self.size
+        # อัปเดตตำแหน่งผลไม้
+        pad = 10
+        self.fruit_rect.pos = (self.x+pad, self.y+pad)
+        self.fruit_rect.size = (self.width-pad*2, self.height-pad*2)
+
+
+# --- 2. หน้าจอเกมหลัก ---
 class GameScreen(Screen):
     # Properties สำหรับ bind กับ UI
-    slot_display = StringProperty("ช่องว่าง: 7/7")
-    slot_fruits = ListProperty([])
-    time_display = StringProperty("เวลา: 60")
+    slot_display = StringProperty("Slots: 0/7") # แก้เป็นภาษาอังกฤษก่อนกันสี่เหลี่ยม
+    time_display = StringProperty("Time: 60")
     
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
-
         self.fruit_types = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
-        
-        # กองเก็บไพ่ (สูงสุด 7 ใบ)
         self.MAX_SLOTS = 7
-        self.slots = []  # เก็บไพ่ที่ถูกคลิก
-        
-        # ข้อมูลไพ่ทั้งหมดในเกม
+        self.slots = []
         self.tiles = []
-        
-        # คะแนน
         self.score = 0
         self.game_over_flag = False
         self.time_left = 60
-    
-    def update_time(self, dt):
-        """ฟังก์ชันนับถอยหลัง (เรียกโดย Clock ทุก 1 วินาที)"""
-        # ถ้าเกมจบแล้ว ไม่ต้องนับต่อ
-        if self.game_over_flag:
-            return
-
-        # ลดเวลาลง 1 วินาที
-        self.time_left -= 1
         
-        # อัปเดตตัวเลขบนหน้าจอ (ส่งค่าไปที่ ui.kv)
-        self.time_display = f"เวลา: {self.time_left}"
+        # --- สร้าง UI ในโค้ดเลย (จะได้ไม่ต้องแก้ ui.kv ไปมา) ---
+        self.layout = FloatLayout()
+        
+        # 1. พื้นหลัง (Background)
+        self.bg = Image(source='assets/images/bg.png', allow_stretch=True, keep_ratio=False)
+        self.layout.add_widget(self.bg)
+        
+        # 2. กระดานเกม (Game Board)
+        # ปรับ size_hint เพื่อให้ตารางไม่เต็มจอเกินไป มีที่ว่างสวยๆ
+        self.game_board = GridLayout(cols=7, spacing=10, padding=20,
+                                     size_hint=(0.9, 0.6), 
+                                     pos_hint={'center_x': 0.5, 'center_y': 0.6})
+        self.layout.add_widget(self.game_board)
+        
+        # 3. แถบข้างล่าง (Slot Bar)
+        # วาดพื้นหลังแถบสีเทาเข้ม
+        with self.layout.canvas.after:
+            Color(0.2, 0.2, 0.2, 0.9)
+            RoundedRectangle(pos=(50, 20), size=(700, 100), radius=[20])
 
-        # 🔍 จุดสำคัญ: เช็คว่าเวลาหมดหรือยัง?
-        if self.time_left <= 0:
-            self.time_left = 0
-            self.time_display = "หมดเวลา!"
-            print("⏳ หมดเวลาแล้ว! Game Over!")
-            
-            # 💀 สั่งให้แพ้ทันที! (บรรทัดนี้ต้องมี!)
-            self.game_over(is_win=False)
-    
+        self.add_widget(self.layout)
+
     def on_enter(self):
         """เริ่มเกมใหม่"""
         self.score = 0
         self.game_over_flag = False
-        
-        # ตั้งเวลาเริ่มต้น 60 วินาที
         self.time_left = 60
-        self.time_display = f"เวลา: {self.time_left}"
-        
+        self.time_display = f"Time: {self.time_left}"
         self.generate_tiles()
-        
-        # ⏱️ เริ่มจับเวลา (เรียก update_time ทุก 1 วินาที)
-        # อย่าลืม import Clock ด้านบนสุดนะครับ
         self.timer_event = Clock.schedule_interval(self.update_time, 1)
-    
-    def on_leave(self):
-        """หยุดจับเวลาเมื่อออกจากหน้านี้"""
-        if hasattr(self, 'timer_event'):
-            self.timer_event.cancel()
-    
+
     def generate_tiles(self):
-        """สุ่มและสร้างไพ่บนกระดาน"""
-        # ล้างไพ่เก่าออก
-        game_board = self.ids.game_board
-        game_board.clear_widgets()
+        """สุ่มและสร้างไพ่"""
+        self.game_board.clear_widgets()
         self.tiles = []
         self.slots = []
-        self.update_slot_display()
         
-        # สุ่มไพ่ - สร้าง 21 ใบ (7 ชนิด x 3 ใบ)
+        # สุ่มไพ่ 21 ใบ
         tile_list = []
-        for i in range(7):  # เลือก 7 ชนิดจาก 10 ชนิด
+        for i in range(7):
             fruit = self.fruit_types[i]
-            for _ in range(3):  # ชนิดละ 3 ใบ
+            for _ in range(3):
                 tile_list.append(fruit)
-        
-        # สุ่มลำดับไพ่
         random.shuffle(tile_list)
         
-        # สร้าง widget ไพ่
-        for i, fruit in enumerate(tile_list):
-            # สร้างปุ่มที่มีรูปภาพ
-            tile_btn = Button(
+        # สร้างปุ่มแบบใหม่ (TileButton)
+        for fruit in tile_list:
+            # ใช้ TileButton ที่เราสร้างไว้ข้างบน!
+            tile_btn = TileButton(
+                fruit_source=f'assets/images/picgame/{fruit}.png',
                 size_hint=(None, None),
-                size=(80, 80),
-                background_normal=f'assets/images/picgame/{fruit}.png',
-                background_down=f'assets/images/picgame/{fruit}.png'
+                size=(80, 80) # ขนาดการ์ด
             )
-            
-            # คำนวณตำแหน่ง (วางแบบ grid และเลื่อนให้ดูซ้อนกัน)
-            row = i // 7
-            col = i % 7
-            x = 50 + col * 90  # เว้นระยะ 90
-            y = 400 - row * 60  # ซ้อนกันในแนวตั้ง เว้นระยะ 60
-            
-            tile_btn.pos = (x, y)
             
             # ผูกฟังก์ชันคลิก
             tile_btn.bind(on_press=lambda btn, f=fruit: self.on_tile_click_new(btn, f))
+            self.game_board.add_widget(tile_btn)
             
-            # เพิ่มเข้า board
-            game_board.add_widget(tile_btn)
-            
-            # เก็บข้อมูล
-            self.tiles.append({
-                'fruit': fruit,
-                'widget': tile_btn,
-                'visible': True
-            })
+            self.tiles.append({'fruit': fruit, 'widget': tile_btn})
         
-        print(f"🎮 สร้างไพ่ {len(tile_list)} ใบเสร็จแล้ว!")
-    
-    def update_slot_display(self):
-        """อัพเดทข้อความแสดงจำนวนช่อง"""
-        remaining = self.MAX_SLOTS - len(self.slots)
-        self.slot_display = f"ช่องว่าง: {remaining}/{self.MAX_SLOTS}"
-        self.slot_fruits = self.slots.copy()
-    
-    def add_to_slots(self, fruit_name):
-        """เพิ่มไพ่เข้ากองเก็บ"""
-        # เช็คว่ากองเต็มหรือยัง
-        if len(self.slots) >= self.MAX_SLOTS:
-            print("กองเต็มแล้ว! แพ้!")
+        print(f"🎮 สร้างไพ่ {len(tile_list)} ใบแบบการ์ดสวยๆ เสร็จแล้ว!")
+
+    def update_time(self, dt):
+        if self.game_over_flag: return
+        self.time_left -= 1
+        self.time_display = f"Time: {self.time_left}"
+        if self.time_left <= 0:
             self.game_over(is_win=False)
-            return False
-        
-        # เพิ่มไพ่เข้ากอง
-        self.slots.append(fruit_name)
-        print(f"เพิ่ม {fruit_name} เข้ากอง | กองตอนนี้: {self.slots}")
-        
-        # อัพเดท UI
-        self.update_slot_display()
-        return True
-    
+
     def on_tile_click_new(self, btn_instance, fruit_type):
-        """ฟังก์ชันทำงานเมื่อคลิกไพ่ (ใช้กับระบบใหม่)"""
-        if self.game_over_flag:
-            return
+        if self.game_over_flag: return
         
         self.play_sound('click.wav')
-            
-        print(f"คลิกไพ่: {fruit_type}")
         
-        # เพิ่มไพ่เข้ากอง
-        if not self.add_to_slots(fruit_type):
-            # ถ้ากองเต็ม = แพ้
-            return
-        
-        # ซ่อนไพ่ที่ถูกคลิก
+        if len(self.slots) >= self.MAX_SLOTS: return
+
+        # เพิ่มเข้า slot และซ่อนไพ่บนกระดาน
+        self.slots.append(fruit_type)
         btn_instance.disabled = True
         btn_instance.opacity = 0
         
-        # เช็คว่ามีเซ็ต 3 ใบหรือยัง
         self.check_match()
-        
-        # เช็คว่าชนะหรือยัง
         self.check_win()
-        
+
     def check_match(self):
-        """ฟังก์ชันเช็คว่าผลไม้เหมือนกัน 3 ใบหรือยัง"""
         from collections import Counter
-        
-        # นับจำนวนผลไม้แต่ละชนิดในกอง
         fruit_count = Counter(self.slots)
-        
-        # เช็คว่ามีผลไม้ไหนครบ 3 ใบหรือไม่
         for fruit, count in fruit_count.items():
             if count >= 3:
-                # เจอเซ็ต 3 ใบ! ลบออก 3 ใบ
-                print(f"🎉 เจอเซ็ต! {fruit} x3 - ลบออกจากกอง")
-                for _ in range(3):
-                    self.slots.remove(fruit)
-                print(f"กองหลังลบ: {self.slots}")
-                
-                # เพิ่มคะแนน
-                self.score += 100
                 self.play_sound('match.wav')
-                
-                # อัพเดท UI
-                self.update_slot_display()
+                for _ in range(3): self.slots.remove(fruit)
+                self.score += 100
                 return True
-        
         return False
-    
+
     def check_win(self):
-        """เช็คว่าไพ่หมดจากกระดานหรือยัง (ชนะ)"""
-        # นับไพ่ที่ยังเหลืออยู่ (ไม่ถูกซ่อน)
         visible_tiles = [t for t in self.tiles if t['widget'].opacity > 0]
-        
         if len(visible_tiles) == 0:
-            print("🏆 ชนะ! ไพ่หมดจากกระดาน")
             self.game_over(is_win=True)
-    
+
     def game_over(self, is_win):
-        """ฟังก์ชันจบเกม - ไปหน้า result"""
         self.game_over_flag = True
-        print(f"เกมจบ! {'ชนะ' if is_win else 'แพ้'} | คะแนน: {self.score}")
-        
-        # ส่งข้อมูลไปหน้า result
         result_screen = self.manager.get_screen('result')
         result_screen.update_result(is_win=is_win, score=self.score)
-        
-        # เปลี่ยนไปหน้า result
         self.manager.current = 'result'
-    
-    def back_to_menu(self):
-        # ฟังก์ชันปุ่มกลับหน้าเมนู
-        print("กลับเมนูหลัก")
-        
+
+    def on_leave(self):
+        if hasattr(self, 'timer_event'): self.timer_event.cancel()
+
     def play_sound(self, sound_file):
         sound = SoundLoader.load(f'assets/sounds/{sound_file}')
-        if sound:
+        if sound: 
             sound.volume = 1.0
             sound.play()
-            
-    
-            

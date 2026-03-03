@@ -1,6 +1,9 @@
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
 from kivy.properties import StringProperty, ListProperty
+from kivy.uix.button import Button
+from kivy.uix.image import Image
+import random
 
 # โหลดไฟล์หน้าตา UI
 Builder.load_file('ui.kv')
@@ -12,13 +15,71 @@ class GameScreen(Screen):
     
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
-        
-        # รายการผลไม้ที่ใช้ในเกม
-        self.fruit_types = ['ทุเรียน', 'มังคุด', 'กล้วย', 'สตรอว์เบอร์รี่', 'แอปเปิล', 'ส้ม', 'องุ่น']
+         
+        self.fruit_types = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']
         
         # กองเก็บไพ่ (สูงสุด 7 ใบ)
         self.MAX_SLOTS = 7
         self.slots = []  # เก็บไพ่ที่ถูกคลิก
+        
+        # ข้อมูลไพ่ทั้งหมดในเกม
+        self.tiles = []  
+    
+    def on_enter(self):
+        """เรียกทุกครั้งที่เข้าหน้านี้ - เริ่มเกมใหม่"""
+        self.generate_tiles()
+    
+    def generate_tiles(self):
+        """สุ่มและสร้างไพ่บนกระดาน"""
+        # ล้างไพ่เก่าออก
+        game_board = self.ids.game_board
+        game_board.clear_widgets()
+        self.tiles = []
+        self.slots = []
+        self.update_slot_display()
+        
+        # สุ่มไพ่ - สร้าง 21 ใบ (7 ชนิด x 3 ใบ)
+        tile_list = []
+        for i in range(7):  # เลือก 7 ชนิดจาก 10 ชนิด
+            fruit = self.fruit_types[i]
+            for _ in range(3):  # ชนิดละ 3 ใบ
+                tile_list.append(fruit)
+        
+        # สุ่มลำดับไพ่
+        random.shuffle(tile_list)
+        
+        # สร้าง widget ไพ่
+        for i, fruit in enumerate(tile_list):
+            # สร้างปุ่มที่มีรูปภาพ
+            tile_btn = Button(
+                size_hint=(None, None),
+                size=(80, 80),
+                background_normal=f'assets/images/picgame/{fruit}.png',
+                background_down=f'assets/images/picgame/{fruit}.png'
+            )
+            
+            # คำนวณตำแหน่ง (วางแบบ grid และเลื่อนให้ดูซ้อนกัน)
+            row = i // 7
+            col = i % 7
+            x = 50 + col * 90  # เว้นระยะ 90
+            y = 400 - row * 60  # ซ้อนกันในแนวตั้ง เว้นระยะ 60
+            
+            tile_btn.pos = (x, y)
+            
+            # ผูกฟังก์ชันคลิก
+            tile_btn.bind(on_press=lambda btn, f=fruit: self.on_tile_click_new(btn, f))
+            
+            # เพิ่มเข้า board
+            game_board.add_widget(tile_btn)
+            
+            # เก็บข้อมูล
+            self.tiles.append({
+                'fruit': fruit,
+                'widget': tile_btn,
+                'visible': True
+            })
+        
+        print(f"🎮 สร้างไพ่ {len(tile_list)} ใบเสร็จแล้ว!")
     
     def update_slot_display(self):
         """อัพเดทข้อความแสดงจำนวนช่อง"""
@@ -40,16 +101,19 @@ class GameScreen(Screen):
         # อัพเดท UI
         self.update_slot_display()
         return True
-        
-    def on_tile_click(self, instance):
-        # ฟังก์ชันทำงานเมื่อกดโดนไพ่ผลไม้
-        print(f"คลิกไพ่: {instance.text}")
-        fruit_name = instance.text
+    
+    def on_tile_click_new(self, btn_instance, fruit_type):
+        """ฟังก์ชันทำงานเมื่อคลิกไพ่ (ใช้กับระบบใหม่)"""
+        print(f"คลิกไพ่: {fruit_type}")
         
         # เพิ่มไพ่เข้ากอง
-        if not self.add_to_slots(fruit_name):
+        if not self.add_to_slots(fruit_type):
             # ถ้ากองเต็ม = แพ้
             return
+        
+        # ซ่อนไพ่ที่ถูกคลิก
+        btn_instance.disabled = True
+        btn_instance.opacity = 0
         
         # เช็คว่ามีเซ็ต 3 ใบหรือยัง
         self.check_match()

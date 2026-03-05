@@ -11,7 +11,7 @@ import random
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
 
-# ✅ ชื่อฟอนต์น่ารัก
+# ✅ ชื่อฟอนต์
 CUSTOM_FONT = 'assets/fonts/cute.ttf' 
 
 # --- 1. คลาสหลอดเวลา ---
@@ -41,33 +41,72 @@ class TimeBar(Widget):
         elif percent > 0.2: self.fg_color.rgba = (1, 0.8, 0, 1)
         else: self.fg_color.rgba = (1, 0.2, 0.2, 1)
 
-# --- 2. คลาสปุ่มไพ่ ---
+# --- 2. คลาสปุ่มไพ่ (อัปเกรด: กันการกดทะลุ 🛡️) ---
 class TileButton(Button):
     def __init__(self, fruit_source, **kwargs):
         super().__init__(**kwargs)
         self.background_normal = ''
         self.background_color = (0, 0, 0, 0)
+        self.size_hint = (None, None)
+        self.is_blocked = False 
+        
         with self.canvas.before:
-            Color(0, 0, 0, 0.2)
-            self.shadow = RoundedRectangle(pos=(self.x+3, self.y-3), size=self.size, radius=[15])
-            Color(0.95, 0.95, 0.9, 1)
+            Color(0, 0, 0, 0.3)
+            self.shadow = RoundedRectangle(pos=(self.x+4, self.y-4), size=self.size, radius=[15])
+            self.bg_color = Color(0.95, 0.95, 0.9, 1)
             self.card_bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[15])
+            
         with self.canvas.after:
             Color(1, 1, 1, 1)
             pad = 10
             self.fruit_rect = Rectangle(source=fruit_source, 
                                       pos=(self.x+pad, self.y+pad), 
                                       size=(self.width-pad*2, self.height-pad*2))
+            
+            # เลเยอร์สีดำจางๆ
+            self.dim_color = Color(0, 0, 0, 0) 
+            self.dim_rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[15])
+
         self.bind(pos=self.update_graphics, size=self.update_graphics)
 
+    # 🔥 ฟังก์ชันสำคัญ: จัดการการกด (กันทะลุ) 🔥
+    def on_touch_down(self, touch):
+        # 1. ถ้าการ์ดนี้ถูกเก็บไปแล้ว (หายตัวอยู่) -> ปล่อยให้ทะลุไปเลย (เพื่อให้กดตัวล่างได้)
+        if self.opacity == 0:
+            return False
+
+        # 2. เช็คว่ากดโดนการ์ดใบนี้ไหม
+        if self.collide_point(*touch.pos):
+            # 3. ถ้ากดโดน แต่การ์ด "โดนทับอยู่" (Blocked)
+            if self.is_blocked:
+                # 🛑 รับการกดไว้ แล้วจบเลย (return True) ไม่ส่งต่อให้ตัวข้างล่าง!
+                return True 
+            
+            # 4. ถ้ากดโดน และไม่โดนทับ -> ทำงานปกติ (กดได้)
+            return super(TileButton, self).on_touch_down(touch)
+        
+        # 5. ถ้าไม่ได้กดโดน -> ผ่าน
+        return super(TileButton, self).on_touch_down(touch)
+
     def update_graphics(self, *args):
-        self.shadow.pos = (self.x+3, self.y-3)
+        self.shadow.pos = (self.x+4, self.y-4)
         self.shadow.size = self.size
         self.card_bg.pos = self.pos
         self.card_bg.size = self.size
         pad = 10
         self.fruit_rect.pos = (self.x+pad, self.y+pad)
         self.fruit_rect.size = (self.width-pad*2, self.height-pad*2)
+        self.dim_rect.pos = self.pos
+        self.dim_rect.size = self.size
+
+    def set_blocked(self, blocked):
+        self.is_blocked = blocked
+        # self.disabled = blocked  <-- เอาออก! เราจะคุมเองใน on_touch_down
+        
+        if blocked:
+            self.dim_color.rgba = (0, 0, 0, 0.5) 
+        else:
+            self.dim_color.rgba = (0, 0, 0, 0)
 
 # --- 3. คลาสช่องด้านล่าง ---
 class EmptySlot(Widget):
@@ -100,7 +139,7 @@ class FilledSlot(Widget):
         self.img.pos = (self.x + pad, self.y + pad)
         self.img.size = (self.width - pad*2, self.height - pad*2)
 
-# --- 4. หน้าจอเกมหลัก (Final Fix: Sticker Layer Order) ---
+# --- 4. หน้าจอเกมหลัก ---
 class GameScreen(Screen):
     def __init__(self, **kwargs):
         super(GameScreen, self).__init__(**kwargs)
@@ -115,23 +154,20 @@ class GameScreen(Screen):
         
         self.layout = FloatLayout()
         
-        # Background
         self.bg = Image(source='assets/images/bg.png', allow_stretch=True, keep_ratio=False)
         self.layout.add_widget(self.bg)
         
         # Game Board
-        self.game_board = GridLayout(spacing=10, padding=20,
-                                     size_hint=(0.85, 0.6),
-                                     pos_hint={'center_x': 0.45, 'center_y': 0.55})
+        self.game_board = FloatLayout(size_hint=(0.9, 0.65),
+                                      pos_hint={'center_x': 0.5, 'center_y': 0.58})
+        self.game_board.bind(size=self.delayed_check_blocked)
         self.layout.add_widget(self.game_board)
         
-        # Slot Grid
         self.slot_grid = GridLayout(rows=1, cols=7, spacing=10, padding=10,
                                     size_hint=(None, None), size=(650, 100),
                                     pos_hint={'center_x': 0.45, 'y': 0.025})
         self.layout.add_widget(self.slot_grid)
 
-        # Time Bar
         self.time_bar = TimeBar(max_value=60, size_hint=(None, None), size=(30, 400),
                                 pos_hint={'right': 0.96, 'center_y': 0.5})
         self.layout.add_widget(self.time_bar)
@@ -143,7 +179,6 @@ class GameScreen(Screen):
         )
         self.layout.add_widget(self.lbl_time)
 
-        # Level Label
         self.lbl_level = Label(
             text="LEVEL 1", font_size='24sp', bold=True,
             color=(1, 1, 0, 1), outline_color=(0, 0, 0, 1), outline_width=2,
@@ -152,7 +187,6 @@ class GameScreen(Screen):
         )
         self.layout.add_widget(self.lbl_level)
 
-        # Pause Button
         self.btn_pause = Button(
             text="II", font_size='24sp', bold=True,
             background_color=(1, 0.6, 0, 1),
@@ -220,11 +254,11 @@ class GameScreen(Screen):
 
         if self.current_level == 1:
             self.GAME_TIME = 60
-            self.cols_num = 7 
+            self.num_sets = 7 
             self.bg.source = 'assets/images/bg.png'
         elif self.current_level == 2:
-            self.GAME_TIME = 50 
-            self.cols_num = 8
+            self.GAME_TIME = 80
+            self.num_sets = 12 
             self.bg.source = 'assets/images/bg2.png'
         
         self.time_left = self.GAME_TIME
@@ -232,9 +266,7 @@ class GameScreen(Screen):
         self.time_bar.max_value = self.GAME_TIME
         self.time_bar.update_bar(self.time_left)
         
-        self.game_board.cols = self.cols_num
         self.game_board.clear_widgets()
-        
         self.generate_tiles()
         
         if hasattr(self, 'timer_event'): self.timer_event.cancel()
@@ -253,7 +285,7 @@ class GameScreen(Screen):
         self.slots = []
         self.update_visual_slots() 
         
-        total_tiles = self.cols_num * 3 
+        total_tiles = self.num_sets * 3
         tile_list = []
         current_fruit_idx = 0
         while len(tile_list) < total_tiles:
@@ -262,24 +294,71 @@ class GameScreen(Screen):
             current_fruit_idx += 1
             
         random.shuffle(tile_list)
-        for fruit in tile_list:
-            tile_btn = TileButton(fruit_source=f'assets/images/picgame/{fruit}.png', 
-                                  size_hint=(None, None), size=(80, 80))
-            tile_btn.bind(on_press=lambda btn, f=fruit: self.on_tile_click_new(btn, f))
-            self.game_board.add_widget(tile_btn)
-            self.tiles.append({'fruit': fruit, 'widget': tile_btn})
+        
+        card_w, card_h = 75, 75
+        
+        if self.current_level == 1:
+            cols = 7
+            start_x_hint = 0.05
+            start_y_hint = 0.7
+            gap_x = 0.13
+            gap_y = 0.22
+            for i, fruit in enumerate(tile_list):
+                row = i // cols
+                col = i % cols
+                pos_x = start_x_hint + (col * gap_x)
+                pos_y = start_y_hint - (row * gap_y)
+                self.create_tile(fruit, pos_x, pos_y, card_w, card_h)
+
+        elif self.current_level == 2:
+            for i, fruit in enumerate(tile_list):
+                rand_x = random.uniform(0.1, 0.8)
+                rand_y = random.uniform(0.1, 0.8)
+                self.create_tile(fruit, rand_x, rand_y, card_w, card_h)
+
+        Clock.schedule_once(self.delayed_check_blocked, 0.1)
+
+    def create_tile(self, fruit, pos_x_hint, pos_y_hint, w, h):
+        tile_btn = TileButton(fruit_source=f'assets/images/picgame/{fruit}.png', 
+                              size=(w, h))
+        tile_btn.pos_hint = {'x': pos_x_hint, 'y': pos_y_hint}
+        tile_btn.bind(on_press=lambda btn, f=fruit: self.on_tile_click_new(btn, f))
+        self.game_board.add_widget(tile_btn)
+        self.tiles.append({'fruit': fruit, 'widget': tile_btn})
+
+    def delayed_check_blocked(self, *args):
+        self.check_blocked_cards()
+
+    def check_blocked_cards(self):
+        for i in range(len(self.tiles)):
+            current_tile = self.tiles[i]['widget']
+            if current_tile.opacity == 0: continue
+
+            is_blocked = False
+            for j in range(i + 1, len(self.tiles)):
+                top_tile = self.tiles[j]['widget']
+                if top_tile.opacity > 0 and current_tile.collide_widget(top_tile):
+                    is_blocked = True
+                    break 
+            
+            current_tile.set_blocked(is_blocked)
 
     def on_tile_click_new(self, btn_instance, fruit_type):
         if self.game_over_flag or self.is_paused: return
+        
+        # ป้องกัน double check เผื่อ on_touch_down พลาด
+        if btn_instance.is_blocked: return
+
         self.play_sound('click.wav')
         if len(self.slots) >= self.MAX_SLOTS: return
 
         self.slots.append(fruit_type)
-        btn_instance.disabled = True
-        btn_instance.opacity = 0
+        
+        btn_instance.opacity = 0 
         
         self.update_visual_slots()
         self.check_match()
+        self.check_blocked_cards() 
         
         if len(self.slots) >= self.MAX_SLOTS:
             self.game_over(is_win=False)
@@ -321,12 +400,10 @@ class GameScreen(Screen):
         if hasattr(self, 'timer_event'): self.timer_event.cancel()
         self.show_popup(is_win)
 
-    # --- ✨ Popup System (Cute & Correct Layer Order) ✨ ---
     def show_popup(self, is_win):
         popup = FloatLayout()
         self.result_popup = popup
         
-        # 1. ฉากหลัง Dim
         with popup.canvas.before:
             Color(0, 0, 0, 0.6)
             popup.bg_rect = Rectangle(pos=(0, 0), size=(2000, 2000))
@@ -337,18 +414,16 @@ class GameScreen(Screen):
                 instance.bg_rect.size = instance.size
         popup.bind(pos=update_dim_bg, size=update_dim_bg)
 
-        # Container
         popup_container = FloatLayout(size_hint=(None, None), size=(450, 420),
                                       pos_hint={'center_x': 0.5, 'center_y': 0.5})
 
-        # --- 2. สร้างกล่องเนื้อหาหลัก (แต่ยังไม่ Add ลง Container) ---
         content_box = BoxLayout(orientation='vertical', spacing=15, padding=30,
                                 size_hint=(1, 1), pos_hint={'center_x': 0.5, 'center_y': 0.5})
         
         with content_box.canvas.before:
             Color(1, 1, 1, 1)
             content_box.bg_rect = RoundedRectangle(pos=content_box.pos, size=content_box.size, radius=[35]) 
-            Color(1, 0.85, 0.4, 1) # ขอบส้มทอง
+            Color(1, 0.85, 0.4, 1) 
             content_box.border_line = Line(rounded_rectangle=(content_box.x, content_box.y, content_box.width, content_box.height, 35), width=5)
             
         def update_content_bg(instance, value):
@@ -358,7 +433,6 @@ class GameScreen(Screen):
                 instance.border_line.rounded_rectangle = (instance.x, instance.y, instance.width, instance.height, 35)
         content_box.bind(pos=update_content_bg, size=update_content_bg)
 
-        # ใส่ข้อความ ปุ่ม ต่างๆ ลงใน Content Box
         title_text = "YOU WIN! 🎉" if is_win else "GAME OVER 💀"
         title_color = (0, 0.7, 0, 1) if is_win else (0.9, 0.3, 0.3, 1)
         lbl_title = Label(text=title_text, font_size='40sp', bold=True, color=title_color, font_name=CUSTOM_FONT)
@@ -400,35 +474,25 @@ class GameScreen(Screen):
                           size_hint=(1, None), height=45, font_name=CUSTOM_FONT)
         btn_home.bind(on_press=self.go_to_menu)
         content_box.add_widget(btn_home)
-
-        # -----------------------------------------------
-        # 🔑 จุดสำคัญอยู่ตรงนี้ครับ! (สลับลำดับการ Add)
-        # -----------------------------------------------
         
-        # 1. ใส่ "กล่องขาว" ลงไปก่อน (ให้มันอยู่ข้างหลัง)
         popup_container.add_widget(content_box)
 
-        # 2. ค่อยใส่ "สติกเกอร์" ตามลงไปทีหลัง (มันจะทับอยู่ข้างบน)
+        # Stickers
         deco_fruits = random.sample(self.fruit_types, 4)
-        
         deco1 = Image(source=f'assets/images/picgame/{deco_fruits[0]}.png', size_hint=(None, None), size=(80, 80), pos_hint={'x': -0.08, 'top': 1.08})
-        popup_container.add_widget(deco1) # 👈 สติกเกอร์อยู่บน
-
+        popup_container.add_widget(deco1) 
         deco2 = Image(source=f'assets/images/picgame/{deco_fruits[1]}.png', size_hint=(None, None), size=(80, 80), pos_hint={'right': 1.08, 'top': 1.08})
-        popup_container.add_widget(deco2) # 👈 สติกเกอร์อยู่บน
-        
+        popup_container.add_widget(deco2) 
         deco3 = Image(source=f'assets/images/picgame/{deco_fruits[2]}.png', size_hint=(None, None), size=(70, 70), pos_hint={'x': -0.06, 'y': -0.06})
-        popup_container.add_widget(deco3) # 👈 สติกเกอร์อยู่บน
-
+        popup_container.add_widget(deco3) 
         deco4 = Image(source=f'assets/images/picgame/{deco_fruits[3]}.png', size_hint=(None, None), size=(90, 90), pos_hint={'right': 1.06, 'y': -0.04})
-        popup_container.add_widget(deco4) # 👈 สติกเกอร์อยู่บน
+        popup_container.add_widget(deco4) 
 
         popup.add_widget(popup_container)
 
         if popup.parent is None:
             self.layout.add_widget(popup)
 
-    # --- Action Buttons ---
     def action_next_level(self, instance):
         if hasattr(self, 'result_popup') and self.result_popup.parent:
             self.layout.remove_widget(self.result_popup)

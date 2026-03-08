@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch
+from src.api_helpers import process_api_string_for_funny, fetch_string_from_api
 from src.api_helpers import process_api_string_for_funny
 
 @patch("src.api_helpers.fetch_string_from_api")
@@ -24,3 +25,9 @@ def test_stub_bonus_not_funny_response(mock_fetch):
     
     assert result == "Not Funny"
     mock_fetch.assert_called_once_with("http://dummy-url.com")
+
+def test_stub_bonus_real_function_raises_error():
+    # Test that the real (unstubbed) function indeed raises an error
+    # This proves why we needed to stub it, and also hits line 5 for 100% coverage
+    with pytest.raises(NotImplementedError):
+        fetch_string_from_api("http://dummy-url.com")

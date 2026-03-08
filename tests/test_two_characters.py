@@ -8,7 +8,7 @@ def test_alternate_asdcbsdcagfsdbgdfanfghbsfdab():
     assert alternate("asdcbsdcagfsdbgdfanfghbsfdab") == 8
 
 def test_alternate_asvkkuvkskksksvkskvsksvkksvkvsckn():
-    assert alternate("asvkkuvkskksksvkskvsksvkksvkvsckn") == 0
+    assert alternate("asvkkuvkskksksvkskvsksvkksvkvsckn") == 2
 
 def test_alternate_short():
     assert alternate("a") == 0

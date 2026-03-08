@@ -65,6 +65,9 @@ class LevelButton(FloatLayout):
         # --- สร้างพื้นที่ Scroll (Commit 9) ---
         self.scroll = ScrollView(size_hint=(0.85, 0.6), pos_hint={'center_x': 0.5, 'center_y': 0.5})
 
+        # --- สร้างตาราง 3 คอลัมน์ (Commit 10) ---
+        self.grid = GridLayout(cols=3, spacing=40, padding=20, size_hint_y=None)
+
         # --- ปุ่ม BACK ---
         self.btn_back = Button(
             text="⬅  BACK", font_size='22sp', font_name=CUSTOM_FONT,

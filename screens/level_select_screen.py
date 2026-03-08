@@ -67,6 +67,9 @@ class LevelButton(FloatLayout):
 
         # --- สร้างตาราง 3 คอลัมน์ (Commit 10) ---
         self.grid = GridLayout(cols=3, spacing=40, padding=20, size_hint_y=None)
+        
+        # --- ทำให้ตารางเลื่อนลงได้ (Commit 11) ---
+        self.grid.bind(minimum_height=self.grid.setter('height'))
 
         # --- ปุ่ม BACK ---
         self.btn_back = Button(

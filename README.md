@@ -34,3 +34,8 @@ King-of-Fruit เป็นเกมจับคู่ภาพผลไม้ท
 - **หน้าจอครบครัน**: แบ่งเป็น Start Screen, Level Select, Game Screen, Result Screen และ Settings Screen
 - **การนำทางที่ลื่นไหล**: สามารถเข้าถึงฟังก์ชันต่างๆ ได้ง่าย และกลับไปหน้าเมนูได้ทุกเมื่อ
 
+ ภาพรวมของโปรแกรม (Program Overview)
+แสดง Architecture Diagram แบบ ASCII art
+อธิบายโครงสร้างทั้งหมด 3 ส่วนหลัก: main.py, screens/, assets/
+อธิบายหน้าที่ของแต่ละ Screen อย่างละเอียด
+อธิบาย Global State ที่เก็บใน App

@@ -141,33 +141,8 @@ class LevelSelectScreen(Screen):
         )
         self.layout.add_widget(title)
 
-        # --- Level Buttons ---
-        self.level_buttons = []
-        total = len(LEVEL_DATA)
-        for i, ldata in enumerate(LEVEL_DATA):
-            # จัดเป็น 2 แถว: แถวบน 3 ปุ่ม, แถวล่าง 2 ปุ่ม
-            if i < 3:
-                row_count = 3
-                row_idx = i
-                cy = 0.6
-            else:
-                row_count = 2
-                row_idx = i - 3
-                cy = 0.35
-            
-            spacing = 0.22
-            start_x = 0.5 - (row_count - 1) * spacing / 2
-            cx = start_x + row_idx * spacing
+        # (เราลบโค้ดคำนวณตำแหน่งและลูปสร้างปุ่มแบบเก่าออกไปจากตรงนี้แล้ว)
 
-            lb = LevelButton(
-                level_info=ldata,
-                is_unlocked=(ldata['level'] <= 1),  # ค่าเริ่มต้น unlock แค่ด่าน 1
-                on_select_cb=self.select_level,
-                size_hint=(None, None), size=(120, 120),
-                pos_hint={'center_x': cx, 'center_y': cy}
-            )
-            self.layout.add_widget(lb)
-            self.level_buttons.append(lb)
 
         # --- ปุ่ม BACK ---
         self.btn_back = Button(
@@ -191,8 +166,10 @@ class LevelSelectScreen(Screen):
     def on_enter(self):
         """Sync สถานะ unlock จาก App ทุกครั้งที่เข้าหน้านี้"""
         app = App.get_running_app()
-        for lb in self.level_buttons:
-            lb.refresh_state(lb.level <= app.unlocked_level)
+        # ตอนนี้ self.level_buttons ยังไม่มี รอสร้างใน Commit 12
+        if hasattr(self, 'level_buttons'):
+            for lb in self.level_buttons:
+                lb.refresh_state(lb.level <= app.unlocked_level)
 
     def select_level(self, level):
         game_screen = self.manager.get_screen('game')

@@ -1,6 +1,12 @@
 # King-of-Fruit 👑🍎
 โปรเจกต์เกมจับคู่ไพ่ผลไม้ 3 ใบ (King-of-Fruit) พัฒนาด้วย Kivy
 
+<div align="center">
+  <img src="assets/images/bg.png" alt="King of Fruit Main Screen" width="600"/>
+  <br/>
+  <i>ภาพบรรยากาศภายในเกม King-of-Fruit</i>
+</div>
+
 ## สมาชิกในกลุ่ม
 1. รหัสนักศึกษา 6810110648 
 2. รหัสนักศึกษา 6810110628
